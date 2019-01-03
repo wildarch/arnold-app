@@ -29,6 +29,24 @@ db.changes({ live: true, include_docs: true }).on('change', function(change){
         });
     }
 });
+
+app.ports.createTransactionInternal.subscribe(function(transaction){
+    db.post(transaction)
+        .then(function(response){
+            if(response.ok) {
+                transaction._id = response.id;
+                transaction._rev = response.rev;
+                app.ports.transactionChangeInternal.send({
+                    "upserted": transaction
+                });
+            } else {
+                console.warn("Response was not OK!", response);
+            }
+        })
+        .catch(function(err){
+            console.error(err);
+        });
+});
 /*
 setInterval(function(){
     db.query('points/total', { group: true}).then(function(res){

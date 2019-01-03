@@ -1,9 +1,10 @@
 module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
-import Database exposing (Transaction, TransactionChange(..), transactionChange)
-import Html exposing (Html, div, h1, img, text)
+import Database exposing (NewTransaction, Transaction, TransactionChange(..), createTransaction, transactionChange)
+import Html exposing (Html, button, div, h1, img, li, text, ul)
 import Html.Attributes exposing (src)
+import Html.Events exposing (onClick)
 import Json.Decode as Decode
 
 
@@ -25,7 +26,8 @@ init =
 
 
 type Msg
-    = Change (Result Decode.Error TransactionChange)
+    = CreateTransaction NewTransaction
+    | Change (Result Decode.Error TransactionChange)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -42,6 +44,9 @@ update msg model =
                             Debug.log "WARN: failed to parse change message:" e
                     in
                     ( model, Cmd.none )
+
+        CreateTransaction trans ->
+            ( model, createTransaction trans )
 
 
 applyChange : TransactionChange -> List Transaction -> List Transaction
@@ -75,7 +80,23 @@ view model =
     div []
         [ img [ src "/logo.svg" ] []
         , h1 [] [ text "Your Elm App is working!" ]
+        , viewTransactions model.transactions
+        , viewAddTransaction
         ]
+
+
+viewTransactions : List Transaction -> Html Msg
+viewTransactions transactions =
+    let
+        mapper t =
+            li [] [ text <| String.fromInt t.points ++ " points from " ++ t.from ++ " to " ++ t.to ]
+    in
+    ul [] <| List.map mapper transactions
+
+
+viewAddTransaction : Html Msg
+viewAddTransaction =
+    button [ onClick <| CreateTransaction { from = "daan", to = "frits", points = 1000 } ] [ text "Add transaction" ]
 
 
 
