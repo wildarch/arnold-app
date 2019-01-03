@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+
+<head>
+	<script src="https://cdn.jsdelivr.net/npm/pouchdb@7.0.0/dist/pouchdb.min.js"></script>
+	<script>
+		const db = new PouchDB("local");
+		db.changes({ live: true, include_docs: true }).on('change', function(change){
+			console.log(change);
+		});
+		db.changes({live: true, include_docs: true, filter: "_view", view: "points/total"}).on('change', function(change){
+			console.log("Total change");
+			console.log(change);
+		});
+		const remote = 'http://root:password@localhost:5984/transactions';
+		db.replicate.from(remote, {live: true}, null);
+		db.replicate.to(remote, {live: true}, null);
+		setInterval(function(){
+			db.query('points/total', { group: true}).then(function(res){
+				console.log(res);
+			});
+		}, 10000);
+	</script>
+</head>
+<body>
+
+</body>
