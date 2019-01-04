@@ -1,11 +1,12 @@
 module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
-import Database exposing (NewTransaction, Transaction, TransactionChange(..), createTransaction, transactionChange)
-import Html exposing (Html, button, div, h1, img, li, text, ul)
-import Html.Attributes exposing (src)
+import Database exposing (NewTransaction, PointTotal, Transaction, TransactionChange(..), createTransaction, pointTotalChange, transactionChange)
+import Html exposing (Html, button, div, h1, img, input, li, text, ul)
+import Html.Attributes exposing (id, src, type_)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
+import Time
 
 
 
@@ -13,12 +14,14 @@ import Json.Decode as Decode
 
 
 type alias Model =
-    { transactions : List Transaction }
+    { transactions : List Transaction
+    , totals : List PointTotal
+    }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { transactions = [] }, Cmd.none )
+    ( { transactions = [], totals = [] }, Cmd.none )
 
 
 
@@ -27,13 +30,14 @@ init =
 
 type Msg
     = CreateTransaction NewTransaction
-    | Change (Result Decode.Error TransactionChange)
+    | TransactionChange (Result Decode.Error TransactionChange)
+    | PointTotalChange (Result Decode.Error (List PointTotal))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Change res ->
+        TransactionChange res ->
             case res of
                 Ok change ->
                     ( { model | transactions = applyChange change model.transactions }, Cmd.none )
@@ -42,6 +46,18 @@ update msg model =
                     let
                         a =
                             Debug.log "WARN: failed to parse change message:" e
+                    in
+                    ( model, Cmd.none )
+
+        PointTotalChange res ->
+            case res of
+                Ok totals ->
+                    ( { model | totals = totals }, Cmd.none )
+
+                Err e ->
+                    let
+                        a =
+                            Debug.log "WARN: failed to parse point total message:" e
                     in
                     ( model, Cmd.none )
 
@@ -75,6 +91,11 @@ applyChange change transactions =
 ---- VIEW ----
 
 
+fileInputId : String
+fileInputId =
+    "file_input"
+
+
 view : Model -> Html Msg
 view model =
     div []
@@ -82,6 +103,7 @@ view model =
         , h1 [] [ text "Your Elm App is working!" ]
         , viewTransactions model.transactions
         , viewAddTransaction
+        , input [ type_ "file", id fileInputId ] []
         ]
 
 
@@ -96,7 +118,18 @@ viewTransactions transactions =
 
 viewAddTransaction : Html Msg
 viewAddTransaction =
-    button [ onClick <| CreateTransaction { from = "daan", to = "frits", points = 1000 } ] [ text "Add transaction" ]
+    button
+        [ onClick <|
+            CreateTransaction
+                { from = "daan"
+                , to = "frits"
+                , points = 1000
+                , description = "Test desc."
+                , mediaId = Just fileInputId
+                , time = Time.millisToPosix 0
+                }
+        ]
+        [ text "Add transaction" ]
 
 
 
@@ -109,5 +142,5 @@ main =
         { view = view
         , init = \_ -> init
         , update = update
-        , subscriptions = always <| transactionChange Change
+        , subscriptions = always <| Sub.batch [ transactionChange TransactionChange, pointTotalChange PointTotalChange ]
         }
